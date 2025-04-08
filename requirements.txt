@@ -1,7 +1,7 @@
 Flask==2.3.2
-numpy==1.23.5  # Downgrade to work with TensorFlow 2.12.0
+numpy==1.23.5
 opencv-python==4.7.0.72
-tensorflow==2.12.0
+tensorflow==2.9.1
 matplotlib==3.7.1
 Pillow==9.5.0
 requests==2.31.0
