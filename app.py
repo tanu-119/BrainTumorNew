@@ -1,16 +1,13 @@
-from flask import Flask, render_template, request, jsonify
+import streamlit as st
 import numpy as np
-import cv2
 import os
 from tensorflow.keras.models import load_model
 import tensorflow as tf
-import io
-import base64
 from PIL import Image
 import zipfile
 import gdown
-
-app = Flask(__name__)
+import io
+import base64
 
 IMG_SIZE = (128, 128)
 
@@ -29,36 +26,36 @@ def download_and_extract_model():
     """Download and unzip the model if it doesn't exist."""
     if not os.path.exists(MODEL_PATH):
         try:
-            print("Downloading model ZIP from Google Drive...")
-            file_id = "1XIV4QM0Wj74DYyayfEwjth4WJM2pbhtH"
+            st.write("Downloading model ZIP from Google Drive...")
+            file_id = "1XIV4QM0Wj74DYyayfEwjth4WJM2pbhtH"  # Replace with your actual file ID
             url = f"https://drive.google.com/uc?id={file_id}"
             gdown.download(url, MODEL_ZIP_PATH, quiet=False, fuzzy=True)
-            print("Model ZIP downloaded successfully!")
+            st.write("Model ZIP downloaded successfully!")
 
-            print("Extracting model from ZIP...")
+            st.write("Extracting model from ZIP...")
             with zipfile.ZipFile(MODEL_ZIP_PATH, 'r') as zip_ref:
-                zip_ref.extractall()
-            print("Model extracted.")
+                zip_ref.extractall()  # Extract the model to the current directory
+            st.write("Model extracted.")
         except Exception as e:
-            print(f"Error during model download/extraction: {e}")
+            st.error(f"Error during model download/extraction: {e}")
             raise
     else:
-        print("Model already exists. Skipping download.")
+        st.write("Model already exists. Skipping download.")
 
 def load_tumor_model():
     """Load the model with error handling."""
     try:
         model = load_model(MODEL_PATH, compile=False)
-        print("Model loaded successfully with standard method.")
+        st.write("Model loaded successfully with standard method.")
         return model
     except Exception as e:
-        print(f"Standard load failed: {e}")
+        st.error(f"Standard load failed: {e}")
         try:
             model = tf.keras.models.load_model(MODEL_PATH)
-            print("Model loaded with tf.keras fallback.")
+            st.write("Model loaded with tf.keras fallback.")
             return model
         except Exception as e:
-            print(f"All model loading methods failed: {e}")
+            st.error(f"All model loading methods failed: {e}")
             raise
 
 # Prepare model
@@ -80,33 +77,25 @@ def get_mask_image(mask_array):
     mask_img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
-@app.route('/')
-def home():
-    return render_template('braintumor.html')
+# Streamlit app interface
+st.title("Brain Tumor Detection")
+st.markdown("Upload an MRI image to predict the tumor type and segmentation.")
 
-@app.route('/upload')
-def upload():
-    return render_template('upload.html')
+uploaded_file = st.file_uploader("Choose an MRI image...", type=["jpg", "png", "jpeg"])
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    if 'image' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
-
-    file = request.files['image']
+if uploaded_file is not None:
+    st.image(uploaded_file, caption="Uploaded Image.", use_column_width=True)
+    
     try:
-        img = preprocess_image(file)
+        img = preprocess_image(uploaded_file)
         seg_pred, clf_pred = model.predict(img)
         tumor_type = label_mapping[np.argmax(clf_pred)]
         mask_b64 = get_mask_image(seg_pred[0])
 
-        return jsonify({
-            'tumor_type': tumor_type,
-            'mask_image': f"data:image/png;base64,{mask_b64}",
-            'confidence': float(np.max(clf_pred))
-        })
+        st.write(f"**Predicted Tumor Type**: {tumor_type}")
+        st.write(f"**Confidence**: {float(np.max(clf_pred)):.2f}")
+        
+        # Display segmentation mask
+        st.image(f"data:image/png;base64,{mask_b64}", caption="Segmentation Mask", use_column_width=True)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+        st.error(f"Error during prediction: {e}")
