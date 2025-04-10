@@ -1,5 +1,4 @@
 flask
-flask-lambda
 numpy
 opencv-python
 tensorflow-cpu==2.18.0
