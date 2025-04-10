@@ -1,11 +1,6 @@
-flask
+streamlit
+tensorflow==2.18.0
+Pillow
 numpy
 opencv-python
-tensorflow-cpu==2.18.0
-matplotlib
-Pillow
-requests
-gunicorn
-h5py
 gdown
-netlify-lambda
