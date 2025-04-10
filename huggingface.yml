@@ -1,0 +1,2 @@
+sdk: flask
+app_file: app.py

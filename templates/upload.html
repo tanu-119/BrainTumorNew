@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload MRI Scan - Brain Tumor Detection</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 4rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #1e40af;
+            margin-bottom: 1rem;
+        }
+
+        p {
+            color: #475569;
+            margin-bottom: 2rem;
+        }
+
+        .upload-box {
+            margin-bottom: 1.5rem;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .custom-file-upload {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            background-color: #2563eb;
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .custom-file-upload:hover {
+            background-color: #1e40af;
+        }
+
+        #image-preview {
+            margin-top: 1.5rem;
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .btn {
+            margin-top: 1.5rem;
+            background-color: #06b6d4;
+            color: white;
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #0891b2;
+        }
+
+        #result-container {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: #f0f9ff;
+            border-radius: 8px;
+            display: none;
+        }
+
+        #mask-preview {
+            max-width: 100%;
+            max-height: 300px;
+            margin-top: 1rem;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-upload"></i> Upload MRI Image</h1>
+        <p>Select a brain MRI image to predict the presence and type of tumor.</p>
+
+        <form id="uploadForm">
+            <div class="upload-box">
+                <label for="image-upload" class="custom-file-upload">
+                    <i class="fas fa-image"></i> Choose Image
+                </label>
+                <input id="image-upload" type="file" name="image" accept="image/*" onchange="previewImage(event)" required>
+            </div>
+            <img id="image-preview" src="#" alt="Preview">
+            <button type="submit" class="btn"><i class="fas fa-search"></i> Predict</button>
+        </form>
+
+        <div id="result-container">
+            <h2>Prediction Result</h2>
+            <p id="tumor-type"></p>
+            <p id="confidence"></p>
+            <h3>Detected Tumor Area</h3>
+            <img id="mask-preview" src="#" alt="Mask Preview">
+        </div>
+    </div>
+
+    <script>
+        function previewImage(event) {
+            const preview = document.getElementById('image-preview');
+            preview.src = URL.createObjectURL(event.target.files[0]);
+            preview.style.display = 'block';
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('image-upload');
+            const resultContainer = document.getElementById('result-container');
+            const tumorType = document.getElementById('tumor-type');
+            const confidence = document.getElementById('confidence');
+            const maskPreview = document.getElementById('mask-preview');
+            
+            if (!fileInput.files.length) {
+                alert('Please select an image first');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            
+            const btn = document.querySelector('.btn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
+            
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                tumorType.textContent = `Tumor Type: ${data.tumor_type}`;
+                confidence.textContent = `Confidence: ${(data.confidence * 100).toFixed(2)}%`;
+                maskPreview.src = data.mask_image;
+                
+                resultContainer.style.display = 'block';
+            })
+            .catch(error => {
+                alert(`Error: ${error.message}`);
+            })
+            .finally(() => {
+                btn.innerHTML = '<i class="fas fa-search"></i> Predict';
+                btn.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>
